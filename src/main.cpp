@@ -35,6 +35,10 @@ void setup()
   Serial.print("Chip ID: ");
   Serial.println(id);
 
+  /* Show the software version */
+  Serial.print("Software Version: ");
+  Serial.println(AUTO_VERSION);
+
   // Create a task to display time and other data
   xTaskCreate(
     display,
