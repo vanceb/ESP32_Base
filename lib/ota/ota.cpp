@@ -64,7 +64,7 @@ void ota_update() {
                                 if (Update.end()) {
                                     Serial.printf("Update complete, downloaded %u bytes", current_size);
                                     Serial.println("Rebooting!");
-                                    delay(2000);
+                                    delay(1000);
                                     ESP.restart();
                                 } else {
                                     Serial.printf("Update failed, code: %u", Update.getError());
