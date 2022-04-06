@@ -1,15 +1,44 @@
 #include <ota.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include<Update.h>
+#include <Update.h>
 #include <Regexp.h>
+#include <HttpsOTAUpdate.h>
 
 /* A text representation of the chip ID derived from the MAC */
 char id[CHIP_ID_LEN];
 
+void HttpEvent(HttpEvent_t *event)
+{
+    switch(event->event_id) {
+        case HTTP_EVENT_ERROR:
+            Serial.println("Http Event Error");
+            break;
+        case HTTP_EVENT_ON_CONNECTED:
+            Serial.println("Http Event On Connected");
+            break;
+        case HTTP_EVENT_HEADER_SENT:
+            Serial.println("Http Event Header Sent");
+            break;
+        case HTTP_EVENT_ON_HEADER:
+            Serial.printf("Http Event On Header, key=%s, value=%s\n", event->header_key, event->header_value);
+            break;
+        case HTTP_EVENT_ON_DATA:
+            break;
+        case HTTP_EVENT_ON_FINISH:
+            Serial.println("Http Event On Finish");
+            break;
+        case HTTP_EVENT_DISCONNECTED:
+            Serial.println("Http Event Disconnected");
+            break;
+    }
+}
+
 /* Check for new software and update as required
  *
- * General principles from https://www.teachmemicro.com/update-esp32-firmware-external-web-server/
+ * General principles from:
+ * https://www.teachmemicro.com/update-esp32-firmware-external-web-server/
+ * https://github.com/espressif/arduino-esp32/blob/master/libraries/Update/examples/HTTPS_OTA_Update/HTTPS_OTA_Update.ino
  */
 void ota_update() {
     char url[OTA_URL_LENGTH];
@@ -44,6 +73,25 @@ void ota_update() {
 
             /* End the previous https connection and setup a new one */
             https.end();
+
+            HttpsOTA.onHttpEvent(HttpEvent);
+            Serial.println("Starting OTA");
+            HttpsOTA.begin(url, AWS_ROOT_CA_1);
+            HttpsOTAStatus_t status = HttpsOTA.status();
+            while (status != HTTPS_OTA_SUCCESS && status != HTTPS_OTA_FAIL) {
+                status = HttpsOTA.status();
+                delay(10);
+            }
+            if (status == HTTPS_OTA_SUCCESS) {
+                Serial.println("OTA Succeeded, rebooting");
+                delay(1000);
+                ESP.restart();
+            }
+            if (status == HTTPS_OTA_FAIL) {
+                Serial.println("OTA Failed!");
+            }
+
+            /*
             https.begin(url, AWS_ROOT_CA_1);
             httpCode = https.GET();
             if (httpCode == 200) {
@@ -62,10 +110,10 @@ void ota_update() {
                             current_size += got;
                             if (current_size == total_size) {
                                 if (Update.end()) {
-                                    Serial.printf("Update complete, downloaded %u bytes", current_size);
+                                    Serial.printf("Update complete, downloaded %u bytes\n", current_size);
                                     Serial.println("Rebooting!");
                                     delay(1000);
-                                    ESP.restart();
+                                    //ESP.restart();
                                 } else {
                                     Serial.printf("Update failed, code: %u", Update.getError());
                                 }
@@ -80,17 +128,17 @@ void ota_update() {
                 Serial.print("Error getting firmware failed with code: ");
                 Serial.println(httpCode);
             }
+            */
         } else {
             Serial.println("Using latest firmware - no update needed");
         }
-
     } else {
         Serial.print("Failed to GET: ");
         Serial.print(url);
         Serial.print(" returned with code ");
         Serial.println(httpCode);
-        https.end();
     }
+    https.end();
 }
 
 /* Parse a git describe version number
