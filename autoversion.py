@@ -1,3 +1,4 @@
+# From:  https://community.platformio.org/t/how-to-build-got-revision-into-binary-for-version-output/15380/5?u=awbmilne
 import subprocess
 
 Import("env")

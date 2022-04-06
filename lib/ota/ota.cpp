@@ -1,0 +1,213 @@
+#include <ota.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include<Update.h>
+#include <Regexp.h>
+
+/* A text representation of the chip ID derived from the MAC */
+char id[CHIP_ID_LEN];
+
+/* Check for new software and update as required
+ *
+ * General principles from https://www.teachmemicro.com/update-esp32-firmware-external-web-server/
+ */
+void ota_update() {
+    char url[OTA_URL_LENGTH];
+    snprintf(url, OTA_URL_LENGTH, OTA_BASE_URL, id, "latest", "txt");
+    Serial.print("Checking latest firmware version: ");
+    Serial.println(url);
+
+    HTTPClient https;
+    https.begin(url, AWS_ROOT_CA_1);
+    int httpCode = https.GET();
+    if (httpCode == 200) {
+        /* Success */
+        String payload = https.getString();
+        payload.trim();
+        char latest[VERSION_LENGTH];
+        strncpy(latest, payload.c_str(), VERSION_LENGTH);
+        Serial.print(httpCode);
+        Serial.print(" Latest firmware version (");
+        Serial.print(latest);
+        Serial.println(")");
+        /* simple check for different version
+         * may use vercmp() if we don't want to allow downgrades
+         */
+        if (strcmp(latest, AUTO_VERSION)) {
+            Serial.print("Differs from current firmware (");
+            Serial.print(AUTO_VERSION);
+            Serial.println(")");
+            snprintf(url, OTA_URL_LENGTH, OTA_BASE_URL, id, latest, "bin");
+            Serial.print("Downloading latest firmware from ");
+            Serial.println(url);
+            /* TODO - Upgrade firmware here */
+
+            /* End the previous https connection and setup a new one */
+            https.end();
+            https.begin(url, AWS_ROOT_CA_1);
+            httpCode = https.GET();
+            if (httpCode == 200) {
+                int total_size = https.getSize();
+                int current_size = 0;
+                size_t got = 0;
+                Serial.printf("Update is %d bytes...\n", total_size);
+                uint8_t buff[128] = {0};
+                if (Update.begin(total_size)) {
+                    WiFiClient * stream = https.getStreamPtr();
+                    while (https.connected()) {
+                        size_t avail = stream->available();
+                        if (avail) {
+                            got = stream->readBytes(buff, ((avail > sizeof(buff)) ? sizeof(buff) : avail));
+                            Update.write(buff, got);
+                            current_size += got;
+                            if (current_size == total_size) {
+                                if (Update.end()) {
+                                    Serial.printf("Update complete, downloaded %u bytes", current_size);
+                                    Serial.println("Rebooting!");
+                                    delay(2000);
+                                    ESP.restart();
+                                } else {
+                                    Serial.printf("Update failed, code: %u", Update.getError());
+                                }
+                            }
+                        }
+                        delay(1);
+                    }
+                } else {
+                    Serial.println("Update too large!");
+                }
+            } else {
+                Serial.print("Error getting firmware failed with code: ");
+                Serial.println(httpCode);
+            }
+        } else {
+            Serial.println("Using latest firmware - no update needed");
+        }
+
+    } else {
+        Serial.print("Failed to GET: ");
+        Serial.print(url);
+        Serial.print(" returned with code ");
+        Serial.println(httpCode);
+        https.end();
+    }
+}
+
+/* Parse a git describe version number
+ * Has one of two formats:
+ *     Just the tagged version (Release), e.g. v1.2.56 (tag)
+ *     Dev version, e.g. v1.2.56-12-asbd563 (tag-distance-hash)
+ */
+void parse_version(char * verstr, int &major, int &minor, int &point, int &step, char* hash) {
+    char * start = verstr;
+    char * istart;
+    char * iend;
+    char number[16];
+
+    /* Setup fail state */
+    major = -1;
+    minor = -1;
+    point = -1;
+    step  = -1;
+    *hash  = {'\0'};
+
+    /* Preliminary (basic) check that we have a version string */
+    if (!(strlen(verstr) > 0 && verstr[0] == 'v')) {
+        return;
+    }
+    ++start;
+
+    /* Parse the first integer (Major) */
+    istart = start;
+    iend = strchr(istart, '.');
+    if (iend == NULL || (iend - istart) > 16) {
+        Serial.print("Badly formatted version string: ");
+        Serial.println(verstr);
+        return;
+    }
+    strncpy(number, istart, (iend - istart));
+    major = atoi(number);
+    /* Parse the second integer (Minor) */
+    istart = ++iend;
+    iend = strchr(istart, '.');
+    if (iend == NULL || (iend - istart) > 16) {
+        Serial.print("Badly formatted version string: ");
+        Serial.println(verstr);
+        return;
+    }
+    strncpy(number, istart, (iend - istart));
+    minor = atoi(number);
+    /* Parse the third integer (Point) */
+    istart = ++iend;
+    iend = strchr(istart, '-');
+    if (iend == NULL) {
+        /* Presume we have a release version */
+        point = atoi(istart);
+        return;
+    } else {
+        /* We found a hyphen so presume dev version */
+        istart = ++iend;
+        iend = strchr(istart, '-');
+        if (iend == NULL || (iend - istart) > 16) {
+            Serial.print("Badly formatted version string: ");
+            Serial.println(verstr);
+            return;
+        }
+        strncpy(number, istart, (iend - istart));
+        step = atoi(number);
+        istart = ++iend;
+        /* Grab the hash */
+        strcpy(hash, istart);
+    }
+
+    /* Sanity check */
+    if (major == 0 && minor == 0 && point == 0) {
+        /* something went wrong */
+        Serial.print("Error parsing version data from: ");
+        Serial.println(verstr);
+        major = -1;
+        minor = -1;
+        point = -1; 
+        step  = -1;
+        *hash  = {'\0'};
+        return;
+    }
+}
+
+/* Semantically compares version numbers
+ * Returning a positive number if the target is
+ * a later version than the current, a negative
+ * number if earlier than current, or 0 if identical
+ */
+int vercmp(char * current, char * target) {
+    int c_major, c_minor, c_point, c_step;
+    char c_hash[VERSION_LENGTH];
+    int t_major, t_minor, t_point, t_step;
+    char t_hash[VERSION_LENGTH];
+
+    parse_version(current, c_major, c_minor, c_point, c_step, c_hash);
+    parse_version(target,  t_major, t_minor, t_point, t_step, t_hash);
+
+    if (t_major > c_major)
+        return 1;
+    if (t_major < c_major)
+        return -1;
+    if (t_minor > c_minor)
+        return 1;
+    if (t_minor < c_minor)
+        return -1;
+    if (t_point > c_point)
+        return 1;
+    if (t_point < c_point)
+        return -1;
+    if (t_step > c_step)
+        return 1;
+    if (t_step < c_step)
+        return -1;
+    if (strcmp(t_hash, c_hash) == 0) {
+        return 0;
+    } else {
+        return 100;
+    }
+
+}

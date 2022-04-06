@@ -9,14 +9,11 @@
 #include <Wire.h>
 
 #include <keeptime.h>
+#include <ota.h>
 #include <serial_display.h>
 
 // Uncomment to output the amount of spare task stack
 //#define PRINT_SPARE_STACK
-
-/* A text representation of the chip ID derived from the MAC */
-#define CHIP_ID_LEN 128
-char id[CHIP_ID_LEN];
 
 TaskHandle_t ntp_task;
 TaskHandle_t display_task;
@@ -31,8 +28,8 @@ void setup()
   /* Populate the id */
   uint64_t raw_id = ESP.getEfuseMac();
   const char * chip = ESP.getChipModel();
-  snprintf(id, CHIP_ID_LEN, "%s_%04X%08X", chip, (uint16_t)(raw_id>>32), (uint32_t)(raw_id));
-  Serial.print("Chip ID: ");
+  snprintf(id, CHIP_ID_LEN, "%04X%08X", (uint16_t)(raw_id>>32), (uint32_t)(raw_id));
+  Serial.print("ID: ");
   Serial.println(id);
 
   /* Show the software version */
@@ -74,6 +71,9 @@ void setup()
     0,
     &ntp_task
   );
+
+  /* Check OTA Firmware */
+  ota_update();
 }
 
 void loop()
