@@ -12,6 +12,7 @@
 #define CHIP_ID_LEN 16
 extern char id[CHIP_ID_LEN];
 
+
 /* Root CA Certificates for Amazon S3 https access */
 #define AWS_ROOT_CA_1 "-----BEGIN CERTIFICATE-----\n" \
 "MIIDQTCCAimgAwIBAgITBmyfz5m/jAo54vB4ikPmljZbyjANBgkqhkiG9w0BAQsF\n" \
@@ -66,7 +67,7 @@ extern char id[CHIP_ID_LEN];
 "4PsJYGw=/n" \
 "-----END CERTIFICATE-----\n"
 
-void ota_update();
+void ota_update_check();
 int vercmp(char * current, char * target);
 
 #endif

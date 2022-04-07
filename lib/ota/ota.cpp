@@ -34,13 +34,79 @@ void HttpEvent(HttpEvent_t *event)
     }
 }
 
+int ota_update_https_ota(char * url) {
+    HttpsOTA.onHttpEvent(HttpEvent);
+    Serial.println("Starting OTA");
+    HttpsOTA.begin(url, AWS_ROOT_CA_1);
+    HttpsOTAStatus_t status = HttpsOTA.status();
+    while (status != HTTPS_OTA_SUCCESS && status != HTTPS_OTA_FAIL) {
+        status = HttpsOTA.status();
+        delay(10);
+    }
+    if (status == HTTPS_OTA_SUCCESS) {
+        Serial.println("OTA Succeeded, rebooting");
+        delay(1000);
+        ESP.restart();
+    }
+    if (status == HTTPS_OTA_FAIL) {
+        Serial.println("OTA Failed!");
+    }
+}
+
+int ota_update(char * url) {
+    HTTPClient https;
+    https.begin(url, AWS_ROOT_CA_1);
+    int httpCode = https.GET();
+    if (httpCode == 200) {
+        int total_size = https.getSize();
+        int current_size = 0;
+        size_t got = 0;
+        Serial.printf("Update is %d bytes...\n", total_size);
+        uint8_t buff[128] = {0};
+        if (Update.begin(total_size)) {
+            WiFiClient * stream = https.getStreamPtr();
+            while (https.connected()) {
+                size_t avail = stream->available();
+                if (avail) {
+                    got = stream->readBytes(buff, ((avail > sizeof(buff)) ? sizeof(buff) : avail));
+                    Update.write(buff, got);
+                    current_size += got;
+                    if (current_size == total_size) {
+                        if (Update.end()) {
+                            Serial.printf("Update complete, downloaded %u bytes\n", current_size);
+                            delay(1000);
+                            if (Update.isFinished() && Update.canRollBack()) {
+                                Serial.println("Rebooting to apply new firmware!");
+                                Update.rollBack();  // Switch to the other partition
+                                delay(5000);
+                                ESP.restart();  // Reboot to activate new software
+                            } else {
+                                Serial.println("All downloaded, but something isn't right - Not applying update");
+                            }
+                        } else {
+                            Serial.printf("Update failed, code: %u", Update.getError());
+                        }
+                    }
+                }
+                delay(1);
+            }
+        } else {
+            Serial.println("Update too large!");
+        }
+    } else {
+        Serial.print("Error getting firmware failed with code: ");
+        Serial.println(httpCode);
+    }
+    https.end();
+}
+
 /* Check for new software and update as required
  *
  * General principles from:
  * https://www.teachmemicro.com/update-esp32-firmware-external-web-server/
  * https://github.com/espressif/arduino-esp32/blob/master/libraries/Update/examples/HTTPS_OTA_Update/HTTPS_OTA_Update.ino
  */
-void ota_update() {
+void ota_update_check() {
     char url[OTA_URL_LENGTH];
     snprintf(url, OTA_URL_LENGTH, OTA_BASE_URL, id, "latest", "txt");
     Serial.print("Checking latest firmware version: ");
@@ -69,66 +135,9 @@ void ota_update() {
             snprintf(url, OTA_URL_LENGTH, OTA_BASE_URL, id, latest, "bin");
             Serial.print("Downloading latest firmware from ");
             Serial.println(url);
-            /* TODO - Upgrade firmware here */
-
-            /* End the previous https connection and setup a new one */
-            https.end();
-
-            HttpsOTA.onHttpEvent(HttpEvent);
-            Serial.println("Starting OTA");
-            HttpsOTA.begin(url, AWS_ROOT_CA_1);
-            HttpsOTAStatus_t status = HttpsOTA.status();
-            while (status != HTTPS_OTA_SUCCESS && status != HTTPS_OTA_FAIL) {
-                status = HttpsOTA.status();
-                delay(10);
-            }
-            if (status == HTTPS_OTA_SUCCESS) {
-                Serial.println("OTA Succeeded, rebooting");
-                delay(1000);
-                ESP.restart();
-            }
-            if (status == HTTPS_OTA_FAIL) {
-                Serial.println("OTA Failed!");
-            }
-
-            /*
-            https.begin(url, AWS_ROOT_CA_1);
-            httpCode = https.GET();
-            if (httpCode == 200) {
-                int total_size = https.getSize();
-                int current_size = 0;
-                size_t got = 0;
-                Serial.printf("Update is %d bytes...\n", total_size);
-                uint8_t buff[128] = {0};
-                if (Update.begin(total_size)) {
-                    WiFiClient * stream = https.getStreamPtr();
-                    while (https.connected()) {
-                        size_t avail = stream->available();
-                        if (avail) {
-                            got = stream->readBytes(buff, ((avail > sizeof(buff)) ? sizeof(buff) : avail));
-                            Update.write(buff, got);
-                            current_size += got;
-                            if (current_size == total_size) {
-                                if (Update.end()) {
-                                    Serial.printf("Update complete, downloaded %u bytes\n", current_size);
-                                    Serial.println("Rebooting!");
-                                    delay(1000);
-                                    //ESP.restart();
-                                } else {
-                                    Serial.printf("Update failed, code: %u", Update.getError());
-                                }
-                            }
-                        }
-                        delay(1);
-                    }
-                } else {
-                    Serial.println("Update too large!");
-                }
-            } else {
-                Serial.print("Error getting firmware failed with code: ");
-                Serial.println(httpCode);
-            }
-            */
+            /* Upgrade firmware here */
+            ota_update(url);
+            //ota_update_https_ota(url);
         } else {
             Serial.println("Using latest firmware - no update needed");
         }
