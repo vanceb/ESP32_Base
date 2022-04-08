@@ -8,51 +8,6 @@
 /* A text representation of the chip ID derived from the MAC */
 char id[CHIP_ID_LEN];
 
-void HttpEvent(HttpEvent_t *event)
-{
-    switch(event->event_id) {
-        case HTTP_EVENT_ERROR:
-            Serial.println("Http Event Error");
-            break;
-        case HTTP_EVENT_ON_CONNECTED:
-            Serial.println("Http Event On Connected");
-            break;
-        case HTTP_EVENT_HEADER_SENT:
-            Serial.println("Http Event Header Sent");
-            break;
-        case HTTP_EVENT_ON_HEADER:
-            Serial.printf("Http Event On Header, key=%s, value=%s\n", event->header_key, event->header_value);
-            break;
-        case HTTP_EVENT_ON_DATA:
-            break;
-        case HTTP_EVENT_ON_FINISH:
-            Serial.println("Http Event On Finish");
-            break;
-        case HTTP_EVENT_DISCONNECTED:
-            Serial.println("Http Event Disconnected");
-            break;
-    }
-}
-
-int ota_update_https_ota(char * url) {
-    HttpsOTA.onHttpEvent(HttpEvent);
-    Serial.println("Starting OTA");
-    HttpsOTA.begin(url, AWS_ROOT_CA_1);
-    HttpsOTAStatus_t status = HttpsOTA.status();
-    while (status != HTTPS_OTA_SUCCESS && status != HTTPS_OTA_FAIL) {
-        status = HttpsOTA.status();
-        delay(10);
-    }
-    if (status == HTTPS_OTA_SUCCESS) {
-        Serial.println("OTA Succeeded, rebooting");
-        delay(1000);
-        ESP.restart();
-    }
-    if (status == HTTPS_OTA_FAIL) {
-        Serial.println("OTA Failed!");
-    }
-}
-
 int ota_update(char * url) {
     HTTPClient https;
     https.begin(url, AWS_ROOT_CA_1);
@@ -77,7 +32,7 @@ int ota_update(char * url) {
                             delay(1000);
                             if (Update.isFinished() && Update.canRollBack()) {
                                 Serial.println("Rebooting to apply new firmware!");
-                                Update.rollBack();  // Switch to the other partition
+                                //Update.rollBack();  // Switch to the other partition
                                 delay(5000);
                                 ESP.restart();  // Reboot to activate new software
                             } else {
