@@ -73,7 +73,7 @@ void setup()
   );
 
   /* Check OTA Firmware */
-  ota_update();
+  ota_update_check();
 }
 
 void loop()
