@@ -39,7 +39,7 @@ int ota_update(char * url) {
                                 Serial.println("All downloaded, but something isn't right - Not applying update");
                             }
                         } else {
-                            Serial.printf("Update failed, code: %u", Update.getError());
+                            Serial.printf("Update failed, code: %u\n", Update.getError());
                         }
                     }
                 }
@@ -49,23 +49,16 @@ int ota_update(char * url) {
             Serial.println("Update too large!");
         }
     } else {
-        Serial.print("Error getting firmware failed with code: ");
-        Serial.println(httpCode);
+        Serial.printf("(%d) Error getting firmware\n", httpCode);
     }
     https.end();
 }
 
-/* Check for new software and update as required
- *
- * General principles from:
- * https://www.teachmemicro.com/update-esp32-firmware-external-web-server/
- * https://github.com/espressif/arduino-esp32/blob/master/libraries/Update/examples/HTTPS_OTA_Update/HTTPS_OTA_Update.ino
- */
+/* Check for new software and update as required */
 void ota_update_check() {
     char url[OTA_URL_LENGTH];
     snprintf(url, OTA_URL_LENGTH, OTA_BASE_URL, id);
-    Serial.print("Checking latest firmware version: ");
-    Serial.println(url);
+    Serial.printf("Checking latest firmware version: %s\n", url);
 
     HTTPClient https;
     https.begin(url, AWS_ROOT_CA_1);
@@ -76,31 +69,21 @@ void ota_update_check() {
         payload.trim();
         char latest[VERSION_LENGTH];
         strncpy(latest, payload.c_str(), VERSION_LENGTH);
-        Serial.print(httpCode);
-        Serial.print(" Latest firmware version (");
-        Serial.print(latest);
-        Serial.println(")");
+        Serial.printf("(%d) Latest firmware version (%s)\n", httpCode, latest);
         /* simple check for different version
          * may use vercmp() if we don't want to allow downgrades
          */
         if (strcmp(latest, AUTO_VERSION)) {
-            Serial.print("Differs from current firmware (");
-            Serial.print(AUTO_VERSION);
-            Serial.println(")");
+            Serial.printf("Differs from current firmware (%s)\n", AUTO_VERSION);
             snprintf(url, OTA_URL_LENGTH, OTA_FIRMWARE_URL, PROJECT_NAME, latest);
-            Serial.print("Downloading latest firmware from ");
-            Serial.println(url);
-            /* Upgrade firmware here */
+            Serial.printf("Downloading latest firmware from %s\n", url);
+            /* Start firmware upgrade */
             ota_update(url);
-            //ota_update_https_ota(url);
         } else {
             Serial.println("Using latest firmware - no update needed");
         }
     } else {
-        Serial.print("Failed to GET: ");
-        Serial.print(url);
-        Serial.print(" returned with code ");
-        Serial.println(httpCode);
+        Serial.printf("(%d) Failed to GET: %s\n", httpCode, url);
     }
     https.end();
 }
