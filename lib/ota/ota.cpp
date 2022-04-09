@@ -87,7 +87,7 @@ void ota_update_check() {
             Serial.print("Differs from current firmware (");
             Serial.print(AUTO_VERSION);
             Serial.println(")");
-            snprintf(url, OTA_URL_LENGTH, OTA_BASE_URL, id, latest, "bin");
+            snprintf(url, OTA_URL_LENGTH, OTA_BASE_URL, "releases", latest, "bin");
             Serial.print("Downloading latest firmware from ");
             Serial.println(url);
             /* Upgrade firmware here */
