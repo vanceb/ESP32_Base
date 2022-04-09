@@ -63,7 +63,7 @@ int ota_update(char * url) {
  */
 void ota_update_check() {
     char url[OTA_URL_LENGTH];
-    snprintf(url, OTA_URL_LENGTH, OTA_BASE_URL, id, "latest", "txt");
+    snprintf(url, OTA_URL_LENGTH, OTA_BASE_URL, id);
     Serial.print("Checking latest firmware version: ");
     Serial.println(url);
 
@@ -87,7 +87,7 @@ void ota_update_check() {
             Serial.print("Differs from current firmware (");
             Serial.print(AUTO_VERSION);
             Serial.println(")");
-            snprintf(url, OTA_URL_LENGTH, OTA_BASE_URL, "releases", latest, "bin");
+            snprintf(url, OTA_URL_LENGTH, OTA_FIRMWARE_URL, PROJECT_NAME, latest);
             Serial.print("Downloading latest firmware from ");
             Serial.println(url);
             /* Upgrade firmware here */

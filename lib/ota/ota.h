@@ -3,7 +3,8 @@
 
 /* Details for the OTA url */
 #define OTA_URL_LENGTH 64
-#define OTA_BASE_URL "https://ota.axxe.co.uk/%s/%s.%s"
+#define OTA_BASE_URL "https://ota.axxe.co.uk/%s/latest.txt"
+#define OTA_FIRMWARE_URL "https://ota.axxe.co.uk/releases/%s/%s.bin"
 
 /* Max length of a version string */
 #define VERSION_LENGTH 64

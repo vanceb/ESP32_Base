@@ -35,6 +35,8 @@ void setup()
   /* Show the software version */
   Serial.print("Software Version: ");
   Serial.println(AUTO_VERSION);
+  /* Show the project name */
+  Serial.printf("Project Name: %s\n", PROJECT_NAME);
 
   // Create a task to display time and other data
   xTaskCreate(
