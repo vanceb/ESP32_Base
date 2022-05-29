@@ -10,7 +10,8 @@
 
 #include <keeptime.h>
 #include <ota.h>
-#include <serial_display.h>
+//#include <serial_display.h>
+#include <SevenSeg.h>
 
 // Uncomment to output the amount of spare task stack
 //#define PRINT_SPARE_STACK
