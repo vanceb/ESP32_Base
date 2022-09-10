@@ -8,14 +8,15 @@
 #include <NTPClient.h>
 #include <Wire.h>
 
-#include <keeptime.h>
-#include <ota.h>
+#include <etask_wifi.h>
+#include <etask_ota.h>
 #include <serial_display.h>
 
 // Uncomment to output the amount of spare task stack
 //#define PRINT_SPARE_STACK
 
-TaskHandle_t ntp_task;
+TaskHandle_t wifi_task;
+TaskHandle_t ota_task;
 TaskHandle_t display_task;
 
 void setup()
@@ -48,34 +49,25 @@ void setup()
     &display_task
   );
 
-  // Set up Wifi - Using WiFi Manager
-  //WiFiManager
-  //Local intialization. Once its business is done, there is no need to keep it around
-  WiFiManager wifiManager;
-  //reset saved settings
-  //wifiManager.resetSettings();
-  
-  //fetches ssid and pass from eeprom and tries to connect
-  //if it does not connect it starts an access point with the specified name
-  //here  "ESP Base"
-  //and goes into a blocking loop awaiting configuration
-  wifiManager.autoConnect("ESP Base");
-  
-  //if you get here you have connected to the WiFi
-  Serial.println("connected...yeey :)");
-
   // Create a task to get time updates from NTP
   xTaskCreate(
-    keeptime,
-    "NTP_Task",
-    1500,
+    etask_wifi,
+    "WiFi_Task",
+    5000,
     NULL,
     0,
-    &ntp_task
+    &wifi_task
   );
 
-  /* Check OTA Firmware */
-  ota_update_check();
+  // Create a task to get OTA updates
+  xTaskCreate(
+    etask_ota,
+    "OTA_Task",
+    5000,
+    NULL,
+    0,
+    &ota_task
+  );
 }
 
 void loop()
@@ -83,7 +75,8 @@ void loop()
   delay(1000);
   
   /* Get the high watermark stack for each task */
-  int spare_ntp     = uxTaskGetStackHighWaterMark(ntp_task);
+  int spare_wifi    = uxTaskGetStackHighWaterMark(wifi_task);
+  int spare_ota     = uxTaskGetStackHighWaterMark(ota_task);
   int spare_display = uxTaskGetStackHighWaterMark(display_task);
 
   /* Good for testing - print spare stack each loop */
@@ -95,9 +88,13 @@ void loop()
   #endif
 
   /* Provide warnings of low stack space */
-  if(spare_ntp < 100) {
-    Serial.print("ntp_task low stack space: ");
-    Serial.println(spare_ntp);
+  if(spare_wifi < 100) {
+    Serial.print("wifi_task low stack space: ");
+    Serial.println(spare_wifi);
+  }
+  if(spare_ota < 100) {
+    Serial.print("ota_task low stack space: ");
+    Serial.println(spare_ota);
   }
   if(spare_display < 100) {
     Serial.print("display_task low stack space: ");
