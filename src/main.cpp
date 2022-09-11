@@ -10,10 +10,10 @@
 
 #include <etask_wifi.h>
 #include <etask_ota.h>
-#include <serial_display.h>
+#include <etask_serial_clock.h>
 
 // Uncomment to output the amount of spare task stack
-//#define PRINT_SPARE_STACK
+#define PRINT_SPARE_STACK
 
 TaskHandle_t wifi_task;
 TaskHandle_t ota_task;
@@ -41,7 +41,7 @@ void setup()
 
   // Create a task to display time and other data
   xTaskCreate(
-    display,
+    etask_serial_clock,
     "Display_Task",
     3000,
     NULL,
@@ -63,7 +63,7 @@ void setup()
   xTaskCreate(
     etask_ota,
     "OTA_Task",
-    5000,
+    8000,
     NULL,
     0,
     &ota_task
@@ -81,8 +81,10 @@ void loop()
 
   /* Good for testing - print spare stack each loop */
   #ifdef PRINT_SPARE_STACK
-  Serial.print("ntp spare stack: ");
-  Serial.println(uxTaskGetStackHighWaterMark(ntp_task));
+  Serial.print("wifi spare stack: ");
+  Serial.println(uxTaskGetStackHighWaterMark(wifi_task));
+  Serial.print("ota spare stack: ");
+  Serial.println(uxTaskGetStackHighWaterMark(ota_task));
   Serial.print("display spare stack: ");
   Serial.println(uxTaskGetStackHighWaterMark(display_task));
   #endif
