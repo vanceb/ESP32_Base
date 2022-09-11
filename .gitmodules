@@ -4,3 +4,6 @@
 [submodule "lib/etask_ota"]
 	path = lib/etask_ota
 	url = git@github.com:vanceb/etask_ota.git
+[submodule "lib/etask_serial_clock"]
+	path = lib/etask_serial_clock
+	url = git@github.com:vanceb/etask_serial_clock.git
