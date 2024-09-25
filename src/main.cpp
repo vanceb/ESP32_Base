@@ -13,7 +13,7 @@
 #include <etask_serial_clock.h>
 
 // Uncomment to output the amount of spare task stack
-#define PRINT_SPARE_STACK
+//#define PRINT_SPARE_STACK
 
 TaskHandle_t wifi_task;
 TaskHandle_t ota_task;
