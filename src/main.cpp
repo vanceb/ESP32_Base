@@ -7,10 +7,12 @@
 #include <Timezone.h>
 #include <NTPClient.h>
 #include <Wire.h>
+#include <SPI.h>
 
 #include <etask_wifi.h>
 #include <etask_ota.h>
 #include <etask_serial_clock.h>
+#include <etask_rgbpanel_clock.h>
 
 // Uncomment to output the amount of spare task stack
 //#define PRINT_SPARE_STACK
@@ -41,6 +43,15 @@ void setup()
 
   // Create a task to display time and other data
   xTaskCreate(
+    etask_rgbpanel_clock,
+    "Display_Task",
+    3000,
+    NULL,
+    0,
+    &display_task
+  );
+  /*
+  xTaskCreate(
     etask_serial_clock,
     "Display_Task",
     3000,
@@ -48,6 +59,7 @@ void setup()
     0,
     &display_task
   );
+  */
 
   // Create a task to get time updates from NTP
   xTaskCreate(

@@ -7,3 +7,6 @@
 [submodule "lib/etask_serial_clock"]
 	path = lib/etask_serial_clock
 	url = git@github.com:vanceb/etask_serial_clock.git
+[submodule "lib/etask_rgbpanel_clock"]
+	path = lib/etask_rgbpanel_clock
+	url = git@github.com:vanceb/etask_rgbpanel_clock.git
